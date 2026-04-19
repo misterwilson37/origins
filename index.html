@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Origins Game Fair Planner</title>
+<style>
+:root {
+  --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.2);
+  --accent:#185fa5;--accent-bg:#e6f1fb;
+  --danger:#a32d2d;--danger-bg:#fcebeb;
+  --success:#3b6d11;--success-bg:#eaf3de;
+  --warn:#854f0b;--warn-bg:#faeeda;
+  --radius:8px;--radius-lg:12px;
+  font-family:system-ui,-apple-system,sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1a1a18;--bg2:#2c2c2a;--bg3:#1f1f1d;--text:#f1efe8;--text2:#b4b2a9;--text3:#888780;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);
+  --accent-bg:#0c447c;--danger-bg:#501313;--success-bg:#173404;--warn-bg:#412402;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent)}
+button,input,select{font-family:inherit;font-size:14px;cursor:pointer}
+#app{max-width:1100px;margin:0 auto;padding:0 1rem}
+header{background:var(--bg3);border-bottom:.5px solid var(--border);position:sticky;top:0;z-index:100;padding:0 1rem}
+.header-top{display:flex;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap}
+.app-title{font-size:16px;font-weight:500;white-space:nowrap}
+.header-controls{display:flex;gap:6px;margin-left:auto;align-items:center;flex-wrap:wrap}
+.year-sel{padding:4px 8px;border:.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:13px}
+.user-btn{padding:4px 12px;border-radius:20px;border:.5px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:13px;transition:all .1s}
+.user-btn.active{background:var(--text);color:var(--bg);border-color:transparent}
+nav{display:flex;gap:1px;overflow-x:auto}
+.nav-btn{padding:8px 14px;border:none;background:none;color:var(--text2);font-size:13px;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.view{display:none;padding:1rem 0}
+.view.active{display:block}
+/* FILTER BAR */
+.filter-bar{background:var(--bg3);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:1rem}
+.filter-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px}
+.filter-row:last-child{margin-bottom:0}
+.filter-label{font-size:10px;color:var(--text3);min-width:56px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.search-input{width:100%;padding:7px 10px;border:.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);margin-bottom:8px}
+.pill{font-size:12px;padding:3px 9px;border-radius:20px;border:.5px solid var(--border2);background:var(--bg2);color:var(--text2);transition:all .1s}
+.pill:hover{border-color:var(--text3)}
+.pill.on{background:var(--text);color:var(--bg);border-color:transparent}
+.pill[data-f=norse].on{background:#0f6e56;color:#fff}
+.pill[data-f=greek].on{background:#ba7517;color:#fff}
+.pill[data-f=myths].on{background:#3b6d11;color:#fff}
+.pill[data-f=zombies].on{background:#444441;color:#fff}
+.pill[data-f=cthulhu].on{background:#3c3489;color:#fff}
+.pill[data-f=apocalypse].on{background:#993c1d;color:#fff}
+.pill[data-f=archery].on{background:#639922;color:#fff}
+.pill[data-f=deckbuilder].on{background:#185fa5;color:#fff}
+.pill[data-f=workerplacement].on{background:#5f5e5a;color:#fff}
+.pill[data-f=legacy].on{background:#854f0b;color:#fff}
+.pill[data-f=coop].on{background:#0c447c;color:#fff}
+.pill[data-f=platonic].on{background:#7f77dd;color:#fff}
+.pill[data-f=premiere].on{background:#d4537e;color:#fff}
+.pill[data-f=preferred].on{background:#27500a;color:#fff}
+/* STATS BAR */
+.stats-bar{font-size:13px;color:var(--text3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+/* EVENT CARDS */
+#event-list{display:flex;flex-direction:column;gap:8px}
+.ecard{background:var(--bg3);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:11px 13px;cursor:pointer;transition:border-color .1s;position:relative}
+.ecard:hover{border-color:var(--border2)}
+.ecard.fav-jake{border-left:3px solid #185fa5}
+.ecard.fav-dan{border-left:3px solid #993c1d}
+.ecard.fav-tim{border-left:3px solid #0f6e56}
+.ecard.fav-multi{border-left:3px solid #7f77dd}
+.card-top{display:flex;align-items:flex-start;gap:8px}
+.card-name{font-size:14px;font-weight:500;flex:1;line-height:1.4;padding-right:24px}
+.card-badges{display:flex;gap:3px;flex-wrap:wrap;flex-shrink:0}
+.b{font-size:11px;padding:2px 6px;border-radius:10px;white-space:nowrap;display:inline-block}
+.b-type{background:var(--bg2);color:var(--text2);border:.5px solid var(--border)}
+.b-lo{background:#eaf3de;color:#3b6d11}.b-me{background:#faeeda;color:#854f0b}.b-hi{background:#fcebeb;color:#a32d2d}
+.b-norse{background:#e1f5ee;color:#0f6e56}.b-greek{background:#faeeda;color:#ba7517}.b-myths{background:#eaf3de;color:#3b6d11}
+.b-zombies{background:#f1efe8;color:#444441}.b-cthulhu{background:#eeedfe;color:#3c3489}.b-apocalypse{background:#faece7;color:#993c1d}
+.b-archery{background:#eaf3de;color:#639922}.b-deckbuilder{background:#e6f1fb;color:#185fa5}.b-workerplacement{background:#f1efe8;color:#5f5e5a}
+.b-legacy{background:#faeeda;color:#854f0b}.b-coop{background:#e6f1fb;color:#0c447c}.b-platonic{background:#eeedfe;color:#534ab7}
+.b-premiere{background:#fbeaf0;color:#993556}.b-preferred{background:#eaf3de;color:#27500a}
+.card-meta{font-size:12px;color:var(--text2);margin-top:5px}
+.card-sessions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sess{font-size:11px;padding:2px 7px;border-radius:var(--radius);border:.5px solid var(--border);color:var(--text2);background:var(--bg2);text-decoration:none;white-space:nowrap;display:inline-block}
+.sess:hover{background:var(--bg);border-color:var(--border2);color:var(--text)}
+.fav-btn{position:absolute;top:10px;right:10px;background:none;border:none;font-size:16px;opacity:.25;transition:opacity .1s,transform .1s;padding:2px;line-height:1}
+.fav-btn:hover{opacity:.6}
+.fav-btn.on{opacity:1}
+.fav-btn:active{transform:scale(1.3)}
+.fav-dots{display:flex;gap:3px;margin-top:4px}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot-jake{background:#185fa5}.dot-dan{background:#993c1d}.dot-tim{background:#0f6e56}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg3);border-radius:var(--radius-lg);max-width:640px;width:100%;max-height:85vh;overflow-y:auto;padding:1.5rem;position:relative}
+.modal-x{position:absolute;top:12px;right:12px;background:var(--bg2);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:8px;padding-right:32px;line-height:1.4}
+.modal-meta{font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.7}
+.modal-desc{font-size:14px;line-height:1.6;color:var(--text2);margin-bottom:1rem}
+.modal-links{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;transition:all .1s;display:inline-flex;align-items:center;gap:5px;text-decoration:none}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn-primary:hover{opacity:.9}
+.btn-danger{background:var(--danger);color:#fff;border-color:transparent}
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:1rem}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent)}
+.upload-zone p{color:var(--text2);font-size:14px;margin-top:8px}
+.ver-item{background:var(--bg3);border:.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.ver-info{flex:1;font-size:13px}
+.ver-meta{font-size:11px;color:var(--text3)}
+/* SCHEDULE */
+.sched-day{margin-bottom:1.5rem}
+.sched-day h3{font-size:13px;font-weight:500;color:var(--text3);margin-bottom:8px;padding-bottom:4px;border-bottom:.5px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+.sched-item{display:flex;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);cursor:pointer}
+.sched-item:hover .sched-name{color:var(--accent)}
+.sched-time{font-size:12px;color:var(--text3);min-width:68px;flex-shrink:0}
+.sched-info{flex:1}
+.sched-name{font-size:13px;font-weight:500}
+.sched-sub{font-size:12px;color:var(--text2)}
+/* GROUP */
+.user-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.ucol-header{padding:8px 10px;border-radius:var(--radius);font-size:13px;font-weight:500;margin-bottom:8px}
+.ucol-jake .ucol-header{background:#e6f1fb;color:#185fa5}
+.ucol-dan .ucol-header{background:#faece7;color:#993c1d}
+.ucol-tim .ucol-header{background:#e1f5ee;color:#0f6e56}
+.ucol-item{font-size:12px;padding:6px 8px;background:var(--bg3);border:.5px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:4px}
+.ucol-item:hover{border-color:var(--border2)}
+/* TODAY */
+.today-header{background:var(--accent);color:#fff;border-radius:var(--radius-lg);padding:1rem;margin-bottom:1rem}
+.today-header h2{font-size:18px;font-weight:500}
+.today-header p{font-size:13px;opacity:.8;margin-top:4px}
+.today-sess{display:flex;gap:10px;padding:10px;background:var(--bg3);border:.5px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:border-color .1s}
+.today-sess:hover{border-color:var(--border2)}
+.today-time{font-size:14px;font-weight:500;min-width:68px;color:var(--accent);flex-shrink:0}
+.today-info{flex:1}
+.today-name{font-size:14px;font-weight:500}
+.today-sub{font-size:12px;color:var(--text2);margin-top:2px}
+/* MISC */
+.section-title{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.loading{text-align:center;padding:3rem;color:var(--text3);font-size:14px}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text3)}
+.empty h3{font-size:15px;font-weight:500;margin-bottom:6px;color:var(--text2)}
+.alert{padding:10px 12px;border-radius:var(--radius);font-size:13px;margin-bottom:8px;border:.5px solid}
+.alert-info{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+.alert-warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.alert-danger{background:var(--danger-bg);color:var(--danger);border-color:var(--danger)}
+.alert-success{background:var(--success-bg);color:var(--success);border-color:var(--success)}
+.diff-list{font-size:12px;color:var(--text2);list-style:none;margin-top:6px}
+.diff-list li{padding:2px 0}
+.diff-list li::before{content:"• "}
+hr{border:none;border-top:.5px solid var(--border);margin:1rem 0}
+.toast{position:fixed;bottom:1rem;right:1rem;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:var(--radius);font-size:13px;z-index:2000;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.conflict-warn{background:var(--warn-bg);border:.5px solid var(--warn);border-radius:var(--radius);padding:4px 8px;font-size:11px;color:var(--warn);margin-left:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <span class="app-title">⚄ Origins Planner</span>
+    <div class="header-controls">
+      <select id="year-sel" class="year-sel" onchange="switchYear(this.value)">
+        <option value="">— year —</option>
+      </select>
+      <div style="display:flex;gap:4px">
+        <button class="user-btn" data-u="jake" onclick="switchUser('jake')">Jake</button>
+        <button class="user-btn" data-u="dan" onclick="switchUser('dan')">Dan</button>
+        <button class="user-btn" data-u="tim" onclick="switchUser('tim')">Tim</button>
+      </div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn active" data-view="browse" onclick="showView('browse')">Browse</button>
+    <button class="nav-btn" data-view="favorites" onclick="showView('favorites')">Favorites</button>
+    <button class="nav-btn" data-view="schedule" onclick="showView('schedule')">Schedule</button>
+    <button class="nav-btn" data-view="group" onclick="showView('group')">Group</button>
+    <button class="nav-btn" data-view="upload" onclick="showView('upload')">Upload</button>
+    <button class="nav-btn" data-view="today" onclick="showView('today')">Today</button>
+  </nav>
+</header>
+
+<div id="app">
+
+<!-- BROWSE -->
+<div id="view-browse" class="view active">
+  <div class="filter-bar">
+    <input class="search-input" id="search-inp" type="search" placeholder="Search name, publisher, room, description…" oninput="onSearch(this.value)">
+    <div class="filter-row">
+      <span class="filter-label">themes</span>
+      <button class="pill" data-f="norse" onclick="toggleF(this)">Norse</button>
+      <button class="pill" data-f="greek" onclick="toggleF(this)">Greek/Roman</button>
+      <button class="pill" data-f="myths" onclick="toggleF(this)">Myths</button>
+      <button class="pill" data-f="zombies" onclick="toggleF(this)">Zombies</button>
+      <button class="pill" data-f="cthulhu" onclick="toggleF(this)">Cthulhu</button>
+      <button class="pill" data-f="apocalypse" onclick="toggleF(this)">Apocalypse</button>
+      <button class="pill" data-f="archery" onclick="toggleF(this)">Archery</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">mechanics</span>
+      <button class="pill" data-f="deckbuilder" onclick="toggleF(this)">Deck Builder</button>
+      <button class="pill" data-f="workerplacement" onclick="toggleF(this)">Worker Placement</button>
+      <button class="pill" data-f="legacy" onclick="toggleF(this)">Legacy</button>
+      <button class="pill" data-f="coop" onclick="toggleF(this)">Co-Op</button>
+      <button class="pill" data-f="platonic" onclick="toggleF(this)">Platonic Dice</button>
+      <button class="pill" data-f="premiere" onclick="toggleF(this)">New/Premiere</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">people</span>
+      <button class="pill" data-f="preferred" onclick="toggleF(this)">My Prefs</button>
+      <button class="pill" data-fu="jake" onclick="toggleFU(this)">Jake ★</button>
+      <button class="pill" data-fu="dan" onclick="toggleFU(this)">Dan ★</button>
+      <button class="pill" data-fu="tim" onclick="toggleFU(this)">Tim ★</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">day</span>
+      <button class="pill on" data-day="All" onclick="toggleDay(this)">All</button>
+      <button class="pill" data-day="Wednesday" onclick="toggleDay(this)">Wed</button>
+      <button class="pill" data-day="Thursday" onclick="toggleDay(this)">Thu</button>
+      <button class="pill" data-day="Friday" onclick="toggleDay(this)">Fri</button>
+      <button class="pill" data-day="Saturday" onclick="toggleDay(this)">Sat</button>
+      <button class="pill" data-day="Sunday" onclick="toggleDay(this)">Sun</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">type</span>
+      <button class="pill on" data-type="All" onclick="toggleType(this)">All</button>
+      <button class="pill" data-type="Board Game" onclick="toggleType(this)">Board</button>
+      <button class="pill" data-type="Roleplaying Game" onclick="toggleType(this)">RPG</button>
+      <button class="pill" data-type="Card Game" onclick="toggleType(this)">Card</button>
+      <button class="pill" data-type="Miniatures Game" onclick="toggleType(this)">Minis</button>
+      <button class="pill" data-type="Escape Games" onclick="toggleType(this)">Escape</button>
+      <button class="pill" data-type="Social Deduction/Deception" onclick="toggleType(this)">Social</button>
+      <button class="pill" data-type="Workshop" onclick="toggleType(this)">Workshop</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">complexity</span>
+      <button class="pill on" data-cx="All" onclick="toggleCX(this)">All</button>
+      <button class="pill" data-cx="Low" onclick="toggleCX(this)">Low</button>
+      <button class="pill" data-cx="Medium" onclick="toggleCX(this)">Medium</button>
+      <button class="pill" data-cx="High" onclick="toggleCX(this)">High</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">duration</span>
+      <button class="pill on" data-dur="0" onclick="toggleDur(this)">Any</button>
+      <button class="pill" data-dur="60" onclick="toggleDur(this)">≤1h</button>
+      <button class="pill" data-dur="120" onclick="toggleDur(this)">≤2h</button>
+      <button class="pill" data-dur="180" onclick="toggleDur(this)">≤3h</button>
+      <button class="pill" data-dur="240" onclick="toggleDur(this)">≤4h</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">options</span>
+      <button class="pill" id="btn-taught" onclick="toggleTaught()">Rules taught only</button>
+      <button class="pill on" id="btn-notour" onclick="toggleNoTour()">Hide tournaments</button>
+      <select id="sort-sel" class="year-sel" onchange="applyFilters()" style="margin-left:auto">
+        <option value="name">A–Z</option>
+        <option value="time">By time</option>
+        <option value="duration">Shortest first</option>
+        <option value="complexity">Easiest first</option>
+      </select>
+      <button class="btn" onclick="clearFilters()" style="font-size:11px;padding:3px 9px">Clear all</button>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <span id="browse-stats">Select a year to begin</span>
+  </div>
+  <div id="event-list"><div class="loading">Select a year to get started.</div></div>
+</div>
+
+<!-- FAVORITES -->
+<div id="view-favorites" class="view">
+  <div id="fav-content"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- SCHEDULE -->
+<div id="view-schedule" class="view">
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-primary" onclick="exportForClaude()">Export for Claude →</button>
+    <button class="btn" onclick="exportFavCSV()">Download CSV</button>
+    <span id="conflict-note" style="font-size:12px;color:var(--warn)"></span>
+  </div>
+  <div id="sched-content"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- GROUP -->
+<div id="view-group" class="view">
+  <div id="group-content"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- UPLOAD -->
+<div id="view-upload" class="view">
+  <div style="display:flex;gap:8px;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+    <label class="filter-label" style="margin:0">Year:</label>
+    <select id="up-year" class="year-sel">
+      <option value="2026">Origins 2026</option>
+      <option value="2027">Origins 2027</option>
+      <option value="2028">Origins 2028</option>
+      <option value="2029">Origins 2029</option>
+    </select>
+    <button class="btn btn-primary" onclick="document.getElementById('csv-inp').click()">Upload Origins CSV</button>
+    <button class="btn" onclick="document.getElementById('prefs-inp').click()">Import My Preferences</button>
+    <input type="file" id="csv-inp" accept=".csv" style="display:none" onchange="handleCSV(this)">
+    <input type="file" id="prefs-inp" accept=".csv" style="display:none" onchange="handlePrefs(this)">
+  </div>
+  <div id="upload-zone" class="upload-zone"
+    ondrop="onDrop(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)"
+    onclick="document.getElementById('csv-inp').click()">
+    <div style="font-size:36px">📋</div>
+    <p><strong>Drop Origins CSV here</strong></p>
+    <p style="font-size:12px">From tabletop.events export — or click to browse</p>
+  </div>
+  <div class="alert alert-info" style="margin-bottom:1rem">
+    <strong>Importing preferences from your Google Sheet:</strong> Export your sheet as CSV, then click "Import My Preferences." The importer looks for a column whose header says <code>TRUE</code> or <code>Preferred</code>, or the column with the most TRUE values. Make sure you're logged in as yourself first.
+  </div>
+  <div id="diff-out"></div>
+  <hr>
+  <p class="section-title">Upload history</p>
+  <div id="ver-list"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- TODAY -->
+<div id="view-today" class="view">
+  <div class="today-header">
+    <h2 id="today-label">Today at Origins</h2>
+    <p id="today-sublabel"></p>
+  </div>
+  <div id="today-day-btns" style="display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap"></div>
+  <div id="today-content"><div class="loading">Loading…</div></div>
+</div>
+
+</div><!-- /app -->
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('event-modal')">×</button>
+    <div id="event-modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- PapaParse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+// ================================================================
+//  FIREBASE CONFIG — replace these values with your project's
+// ================================================================
+const FIREBASE_CONFIG = {
+  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+  authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId:             "REPLACE_WITH_YOUR_APP_ID"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+
+// ================================================================
+//  CONSTANTS
+// ================================================================
+const USERS = ['jake','dan','tim'];
+const UCOLORS = {jake:'#185fa5', dan:'#993c1d', tim:'#0f6e56'};
+const DAYS = ['Wednesday','Thursday','Friday','Saturday','Sunday'];
+// Convention date anchor per year — update as needed
+const CONV_DATES = {
+  2026: { start: new Date('2026-06-17'), days: ['Wednesday','Thursday','Friday','Saturday','Sunday'] },
+  2027: { start: new Date('2027-06-16'), days: ['Wednesday','Thursday','Friday','Saturday','Sunday'] }
+};
+
+// ================================================================
+//  AUTO-FLAG PATTERNS
+// ================================================================
+const FLAGS = {
+  norse:          /midgard|norse|\bodin\b|\bthor\b|\bloki\b|viking|ragnar|valky|valhalla|asgard|yggdrasil|berserker/,
+  greek:          /greek|greece|\brome\b|roman|\blatin\b|\bzeus\b|jupiter|olymp|sparta|trojan|\btroy\b|hercul|heracle|odyssey|\bathena\b|\bposeidon\b|\bapollo\b|caesar/,
+  myths:          /myth|folklore|folktale|\blegend\b/,
+  zombies:        /zombie|undead|living dead|walking dead|shambling|\bghoul\b/,
+  cthulhu:        /lovecraft|cthulhu|eldritch|miskatonic|arkham|r'lyeh|old ones|elder gods|deep one|shoggoth|nyarlathotep|innsmouth|cosmic horror/,
+  apocalypse:     /apocalyp|end times|end of the world|post.apoc|wasteland|dystop/,
+  archery:        /\barcher|\blongbow\b|\bcrossbow\b|\bshortbow\b|\bquiver\b|\bfletcher|bow and arrow|robin hood|green arrow|\bhawkeye\b|\blegolas\b|\bkatniss\b/,
+  deckbuilder:    /deck.build|bag.build|pool.build|living card|dominion|cerberus engine|gryphon engine/,
+  workerplacement:/worker.place|resource management|action selection/,
+  legacy:         /\blegacy\b/,
+  coop:           /co.op|cooperat|team.based|work together/,
+  platonic:       /\bplatonic\b|polyhedral|polyhedron|\bd4\b|\bd8\b|\bd12\b|\bd20\b|custom dice|unique dice|dice.build|dice.draft|dice.place|dice as your/,
+  premiere:       /first look|among the first|brand new|prototype|playtest|embargoed|debut|world premiere|sneak peek|exclusive preview|new for ['']?2[0-9]|new rpg|new game/
+};
+
+// ================================================================
+//  APP STATE
+// ================================================================
+const S = {
+  year:  null,
+  user:  localStorage.getItem('origins_user') || null,
+  events:[],
+  favs:  {jake:new Set(), dan:new Set(), tim:new Set()},
+  prefs: {},  // key: "user_year" → Set of event nums
+  view:  'browse',
+  filt:  {
+    flags:     new Set(),
+    favusers:  new Set(),
+    day:       'All',
+    type:      'All',
+    cx:        'All',
+    dur:       0,
+    taught:    false,
+    notour:    true,
+    q:         ''
+  }
+};
+
+// ================================================================
+//  INIT
+// ================================================================
+async function init() {
+  if (S.user) {
+    document.querySelectorAll('.user-btn').forEach(b => b.classList.toggle('active', b.dataset.u === S.user));
+  }
+  await loadYearList();
+  const savedYear = localStorage.getItem('origins_year');
+  if (savedYear) {
+    document.getElementById('year-sel').value = savedYear;
+    await switchYear(savedYear, true);
+  }
+  setupTodayPicker();
+}
+
+// ================================================================
+//  YEAR MANAGEMENT
+// ================================================================
+async function loadYearList() {
+  const sel = document.getElementById('year-sel');
+  sel.innerHTML = '<option value="">— select year —</option>';
+  try {
+    const snap = await db.collection('years').orderBy('year','desc').get();
+    const years = [];
+    snap.forEach(d => years.push(d.data()));
+    if (!years.find(y => y.year === 2026)) years.push({year:2026, label:'Origins 2026'});
+    years.sort((a,b) => b.year - a.year);
+    years.forEach(y => {
+      const o = document.createElement('option');
+      o.value = y.year;
+      o.textContent = y.label || `Origins ${y.year}`;
+      sel.appendChild(o);
+    });
+    // Sync upload year options
+    const upSel = document.getElementById('up-year');
+    upSel.innerHTML = '';
+    const allYears = new Set([...years.map(y=>y.year), 2026, 2027, 2028, 2029]);
+    [...allYears].sort((a,b)=>b-a).forEach(yr => {
+      const o = document.createElement('option');
+      o.value = yr; o.textContent = `Origins ${yr}`;
+      upSel.appendChild(o);
+    });
+  } catch(e){ toast('Could not load year list'); }
+}
+
+async function switchYear(year, initial=false) {
+  if (!year) return;
+  S.year = parseInt(year);
+  localStorage.setItem('origins_year', year);
+  if (!initial) { S.events = []; document.getElementById('event-list').innerHTML = '<div class="loading">Loading…</div>'; }
+  await Promise.all([loadEvents(year), loadAllFavs(year), loadAllPrefs(year)]);
+  applyFilters();
+  renderCurrent();
+}
+
+// ================================================================
+//  EVENTS — cached in localStorage, versioned
+// ================================================================
+async function loadEvents(year) {
+  const cacheKey = `orig_ev_${year}`;
+  const verKey   = `orig_ver_${year}`;
+  let latest = null;
+  try {
+    const meta = await db.collection('years').doc(String(year)).get();
+    if (meta.exists) latest = meta.data().latestVersion || null;
+  } catch(e){}
+
+  const cached = localStorage.getItem(cacheKey);
+  const cachedVer = localStorage.getItem(verKey);
+  if (latest && cachedVer === latest && cached) {
+    try { S.events = JSON.parse(cached); toast(`${S.events.length} events loaded`); return; } catch(e){}
+  }
+
+  try {
+    const snap = await db.collection('years').doc(String(year)).collection('chunks').get();
+    S.events = [];
+    snap.forEach(d => { const dat = d.data(); if (dat.events) S.events.push(...dat.events); });
+    if (!S.events.length) {
+      document.getElementById('event-list').innerHTML = '<div class="empty"><h3>No events yet</h3><p>Upload a CSV in the Upload tab</p></div>';
+      return;
+    }
+    try { localStorage.setItem(cacheKey, JSON.stringify(S.events)); if (latest) localStorage.setItem(verKey, latest); } catch(e){}
+    toast(`${S.events.length} events loaded`);
+  } catch(e) {
+    document.getElementById('event-list').innerHTML = '<div class="empty"><h3>Failed to load events</h3><p>' + e.message + '</p></div>';
+  }
+}
+
+// ================================================================
+//  FAVORITES
+// ================================================================
+async function loadAllFavs(year) {
+  await Promise.all(USERS.map(u => loadUserFavs(u, year)));
+}
+async function loadUserFavs(user, year) {
+  try {
+    const d = await db.collection('userFavorites').doc(user).get();
+    S.favs[user] = d.exists ? new Set(Object.keys(d.data()[String(year)] || {})) : new Set();
+  } catch(e){ S.favs[user] = new Set(); }
+}
+async function toggleFav(num) {
+  if (!S.user) { toast('Pick a user first'); return; }
+  const ns = String(num);
+  const was = S.favs[S.user].has(ns);
+  was ? S.favs[S.user].delete(ns) : S.favs[S.user].add(ns);
+  const upd = {};
+  upd[`${S.year}.${ns}`] = was ? firebase.firestore.FieldValue.delete() : firebase.firestore.Timestamp.now();
+  try {
+    await db.collection('userFavorites').doc(S.user).set(upd, {merge:true});
+    // Refresh card in DOM
+    const card = document.querySelector(`[data-num="${ns}"]`);
+    if (card) refreshCardFav(card, ns);
+    if (S.view==='favorites') renderFavView();
+    if (S.view==='group') renderGroupView();
+    if (S.view==='schedule') renderSchedView();
+  } catch(e) {
+    was ? S.favs[S.user].add(ns) : S.favs[S.user].delete(ns);
+    toast('Save failed — check connection');
+  }
+}
+function favUsers(num) { return USERS.filter(u => S.favs[u].has(String(num))); }
+
+// ================================================================
+//  PREFERENCES (imported from Google Sheet CSV)
+// ================================================================
+async function loadAllPrefs(year) {
+  await Promise.all(USERS.map(u => loadUserPrefs(u, year)));
+}
+async function loadUserPrefs(user, year) {
+  try {
+    const d = await db.collection('userPrefs').doc(user).get();
+    if (d.exists) {
+      const nums = d.data()[String(year)] || [];
+      S.prefs[`${user}_${year}`] = new Set(nums.map(String));
+    }
+  } catch(e){}
+}
+function isPref(num) {
+  if (!S.user || !S.year) return false;
+  return S.prefs[`${S.user}_${S.year}`]?.has(String(num)) || false;
+}
+
+// ================================================================
+//  CSV PARSING
+// ================================================================
+function parseOriginCSV(text) {
+  const res = Papa.parse(text, {header:true, skipEmptyLines:true});
+  return res.data.map(row => {
+    const e = {
+      num:        row['Event Number'] || row['ID'] || '',
+      name:       (row['Event Name'] || row['Name'] || '').trim(),
+      type:       row['Event Type'] || '',
+      desc:       row['Description'] || '',
+      publisher:  row['Game Publisher'] || '',
+      complexity: row['Game Complexity'] || '',
+      experience: row['Player Experience'] || '',
+      taught:     (row['Rules Taught']||'').toLowerCase()==='yes',
+      tournament: (row['Is your event a tournament?']||'').toLowerCase()==='yes',
+      duration:   parseInt(row['Duration (minutes)']||'0')||0,
+      room:       row['Room'] || '',
+      starts:     row['Starts'] || '',
+      startUTC:   row['Start Date (UTC)'] || '',
+      maxTix:     row['Max Tickets'] || '',
+      sold:       row['Sold Count'] || '0',
+      price:      row['Price'] || '0',
+      subcat:     row['Sub-Category'] || '',
+      moreInfo:   row['More Info'] || '',
+      viewURI:    row['View URI'] || '',
+      system:     row['Game System'] || '',
+    };
+    const parts = e.starts.split(' at ');
+    e.day  = parts[0]?.trim() || '';
+    e.time = parts[1]?.trim() || '';
+    e.url  = e.viewURI ? `https://tabletop.events${e.viewURI}` : null;
+    e.bgg  = e.moreInfo?.includes('boardgamegeek.com') ? e.moreInfo : null;
+    const hay = [e.name, e.desc, e.subcat, e.publisher, e.system].join(' ').toLowerCase();
+    e.flags = {};
+    for (const [k,pat] of Object.entries(FLAGS)) e.flags[k] = pat.test(hay);
+    return e;
+  }).filter(e => e.num && e.name);
+}
+
+function parsePrefsCSV(text) {
+  const res = Papa.parse(text, {header:true, skipEmptyLines:true});
+  if (!res.data.length) return [];
+  const headers = Object.keys(res.data[0]);
+  let col = headers.find(h => /^true$|prefer|^flag$|^yes$/i.test(h.trim()));
+  if (!col) {
+    let best=null, bestN=0;
+    for (const h of headers) {
+      const n = res.data.filter(r => (r[h]||'').toString().toUpperCase()==='TRUE').length;
+      if (n > bestN) { bestN=n; best=h; }
+    }
+    if (bestN>0) col = best;
+  }
+  if (!col) return [];
+  const numCol = headers.find(h => /number|event.num|^id$|^num$/i.test(h)) || headers[0];
+  return res.data.filter(r => (r[col]||'').toString().toUpperCase()==='TRUE').map(r => r[numCol]).filter(Boolean);
+}
+
+// ================================================================
+//  CSV DIFF
+// ================================================================
+function computeDiff(oldEvs, newEvs) {
+  const oldMap = new Map(oldEvs.map(e => [String(e.num), e]));
+  const newMap = new Map(newEvs.map(e => [String(e.num), e]));
+  const added   = newEvs.filter(e => !oldMap.has(String(e.num)));
+  const removed = oldEvs.filter(e => !newMap.has(String(e.num)));
+  const removedCaredAbout = {};
+  for (const e of removed) {
+    const fans = favUsers(e.num);
+    if (fans.length) removedCaredAbout[e.num] = fans;
+  }
+  return {added, removed, removedCaredAbout};
+}
+
+// ================================================================
+//  FILE HANDLERS
+// ================================================================
+function onDragOver(ev){ ev.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function onDragLeave(){ document.getElementById('upload-zone').classList.remove('drag-over'); }
+function onDrop(ev){ ev.preventDefault(); document.getElementById('upload-zone').classList.remove('drag-over'); if(ev.dataTransfer.files[0]) processFile(ev.dataTransfer.files[0],'origins'); }
+function handleCSV(inp){ if(inp.files[0]) processFile(inp.files[0],'origins'); inp.value=''; }
+function handlePrefs(inp){ if(inp.files[0]) processFile(inp.files[0],'prefs'); inp.value=''; }
+function processFile(file, type) {
+  const r = new FileReader();
+  r.onload = e => type==='origins' ? doUpload(e.target.result, file.name) : doImportPrefs(e.target.result);
+  r.readAsText(file);
+}
+
+async function doUpload(text, filename) {
+  const year = parseInt(document.getElementById('up-year').value);
+  toast('Parsing…');
+  const newEvs = parseOriginCSV(text);
+  if (!newEvs.length) { toast('No events found — check CSV format'); return; }
+
+  const diff = computeDiff(S.events, newEvs);
+  renderDiffOut(diff);
+
+  toast(`Uploading ${newEvs.length} events…`);
+  const verId = Date.now().toString();
+  const CHUNK = 200;
+  const batch = db.batch();
+
+  try {
+    const oldChunks = await db.collection('years').doc(String(year)).collection('chunks').get();
+    oldChunks.forEach(d => batch.delete(d.ref));
+    for (let i=0; i<newEvs.length; i+=CHUNK) {
+      batch.set(
+        db.collection('years').doc(String(year)).collection('chunks').doc(String(Math.floor(i/CHUNK))),
+        { events: newEvs.slice(i, i+CHUNK) }
+      );
+    }
+    batch.set(db.collection('years').doc(String(year)), {
+      year, label:`Origins ${year}`, latestVersion:verId,
+      lastUpdated:firebase.firestore.Timestamp.now(), eventCount:newEvs.length
+    }, {merge:true});
+    batch.set(db.collection('years').doc(String(year)).collection('versions').doc(verId), {
+      verId, filename, eventCount:newEvs.length,
+      uploadedAt:firebase.firestore.Timestamp.now(),
+      uploadedBy:S.user||'unknown',
+      diff:{added:diff.added.length, removed:diff.removed.length, caredAbout:Object.keys(diff.removedCaredAbout).length}
+    });
+    await batch.commit();
+    S.events = newEvs; S.year = year;
+    try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); localStorage.setItem(`orig_ver_${year}`,verId); } catch(e){}
+    await loadYearList();
+    document.getElementById('year-sel').value = year;
+    applyFilters();
+    renderVerList(year);
+    toast(`✓ ${newEvs.length} events uploaded for ${year}`);
+  } catch(e) { toast('Upload failed: '+e.message); }
+}
+
+async function doImportPrefs(text) {
+  if (!S.user) { toast('Select a user first'); return; }
+  if (!S.year) { toast('Select a year first'); return; }
+  const nums = parsePrefsCSV(text);
+  if (!nums.length) { toast('No preferred events found — check CSV'); return; }
+  const upd = {}; upd[String(S.year)] = nums.map(String);
+  try {
+    await db.collection('userPrefs').doc(S.user).set(upd, {merge:true});
+    S.prefs[`${S.user}_${S.year}`] = new Set(nums.map(String));
+    toast(`✓ Imported ${nums.length} preferences for ${S.user}`);
+    applyFilters();
+  } catch(e) { toast('Import failed: '+e.message); }
+}
+
+// ================================================================
+//  FILTER & RENDER
+// ================================================================
+function applyFilters() {
+  if (!S.events.length) return;
+  const {flags, favusers, day, type, cx, dur, taught, notour, q} = S.filt;
+  const ql = q.toLowerCase();
+
+  let evs = S.events.filter(e => {
+    if (ql && ![e.name,e.publisher,e.room,e.desc].some(s=>(s||'').toLowerCase().includes(ql))) return false;
+    for (const f of flags) {
+      if (f==='preferred') { if (!isPref(e.num)) return false; }
+      else { if (!e.flags[f]) return false; }
+    }
+    for (const u of favusers) { if (!S.favs[u].has(String(e.num))) return false; }
+    if (day!=='All' && e.day!==day) return false;
+    if (type!=='All' && e.type!==type) return false;
+    if (cx!=='All' && e.complexity!==cx) return false;
+    if (dur && e.duration > dur) return false;
+    if (taught && !e.taught) return false;
+    if (notour && e.tournament) return false;
+    return true;
+  });
+
+  const sortBy = document.getElementById('sort-sel')?.value||'name';
+  evs.sort((a,b) => {
+    if (sortBy==='name')       return a.name.localeCompare(b.name);
+    if (sortBy==='time')       return (a.time||'').localeCompare(b.time||'');
+    if (sortBy==='duration')   return (a.duration||0)-(b.duration||0);
+    if (sortBy==='complexity') { const o={Low:0,Medium:1,High:2}; return (o[a.complexity]||1)-(o[b.complexity]||1); }
+    return 0;
+  });
+
+  document.getElementById('browse-stats').textContent = `${evs.length} of ${S.events.length} events`;
+  const list = document.getElementById('event-list');
+  if (!evs.length) { list.innerHTML = '<div class="empty"><h3>No events match</h3><p>Try clearing some filters</p></div>'; return; }
+  list.innerHTML = evs.map(e => cardHTML(e)).join('');
+}
+
+// ================================================================
+//  CARD RENDERING
+// ================================================================
+function cardHTML(e) {
+  const fu = favUsers(e.num);
+  let fc = '';
+  if (fu.length>1) fc='fav-multi'; else if (fu.length===1) fc=`fav-${fu[0]}`;
+  const isFav = S.user && S.favs[S.user].has(String(e.num));
+  const pref  = isPref(e.num);
+
+  const fbadges = Object.entries(e.flags).filter(([,v])=>v).map(([k])=>`<span class="b b-${k}">${FLABEL[k]}</span>`).join('');
+  const dur = e.duration ? ` · ${Math.round(e.duration/60*10)/10}h` : '';
+  const meta = [e.publisher, dur.trim(), e.room, e.taught?'rules taught':''].filter(Boolean).join(' · ');
+  const dots = fu.map(u=>`<span class="dot dot-${u}" title="${u}"></span>`).join('');
+  const sess = e.url ? `<a class="sess" href="${e.url}" target="_blank" onclick="event.stopPropagation()">${(e.day||'').slice(0,3)} ${e.time||''}</a>` : (e.starts ? `<span class="sess">${e.starts}</span>` : '');
+
+  return `<div class="ecard ${fc}" data-num="${e.num}" onclick="showDetail('${e.num}')">
+    <button class="fav-btn ${isFav?'on':''}" onclick="event.stopPropagation();toggleFav('${e.num}')" title="${isFav?'Remove':'Favorite'}">★</button>
+    <div class="card-top">
+      <div class="card-name">${e.name}</div>
+      <div class="card-badges">
+        <span class="b b-type">${TSHORT[e.type]||e.type||'?'}</span>
+        ${cxBadge(e.complexity)}
+        ${pref?'<span class="b b-preferred">★ Pref</span>':''}
+        ${fbadges}
+      </div>
+    </div>
+    <div class="card-meta">${meta}</div>
+    ${dots?`<div class="fav-dots">${dots}</div>`:''}
+    <div class="card-sessions">${sess}</div>
+  </div>`;
+}
+
+function refreshCardFav(card, ns) {
+  const isFav = S.user && S.favs[S.user].has(ns);
+  card.querySelector('.fav-btn')?.classList.toggle('on', isFav);
+  const fu = favUsers(ns);
+  let fc=''; if(fu.length>1) fc='fav-multi'; else if(fu.length===1) fc=`fav-${fu[0]}`;
+  card.className = `ecard ${fc}`;
+  const dots = fu.map(u=>`<span class="dot dot-${u}" title="${u}"></span>`).join('');
+  const dc = card.querySelector('.fav-dots');
+  if (dc) dc.innerHTML = dots;
+}
+
+// ================================================================
+//  EVENT DETAIL MODAL
+// ================================================================
+function showDetail(num) {
+  const e = S.events.find(ev => String(ev.num)===String(num));
+  if (!e) return;
+  const isFav = S.user && S.favs[S.user].has(String(num));
+  const fu = favUsers(num);
+  const fbadges = Object.entries(e.flags).filter(([,v])=>v).map(([k])=>`<span class="b b-${k}">${FLABEL[k]}</span>`).join('');
+  const pref = isPref(num);
+  const dur = e.duration ? `${Math.round(e.duration/60*10)/10}h` : '?';
+
+  document.getElementById('event-modal-body').innerHTML = `
+    <h2>${e.name}</h2>
+    <div class="modal-meta">
+      <strong>${TSHORT[e.type]||e.type}</strong> · ${e.publisher||'Unknown'} · ${dur} · ${e.complexity||'?'} complexity<br>
+      ${e.room}${e.taught?' · Rules taught':''}${e.tournament?' · Tournament':''}${pref?' · <strong>★ Your preference</strong>':''}
+      ${e.day ? `<br>${e.day}${e.time?' at '+e.time:''}` : ''}
+    </div>
+    <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px">${fbadges}</div>
+    ${fu.length ? `<p style="font-size:13px;margin-bottom:8px">Favorited by: ${fu.map(u=>`<span style="color:${UCOLORS[u]};font-weight:500">${u}</span>`).join(', ')}</p>` : ''}
+    <div class="modal-desc">${e.desc||'No description available.'}</div>
+    <div class="modal-links">
+      ${e.url?`<a class="sess" href="${e.url}" target="_blank">tabletop.events ↗</a>`:''}
+      ${e.bgg?`<a class="sess" href="${e.bgg}" target="_blank">BoardGameGeek ↗</a>`:''}
+    </div>
+    <div class="modal-actions">
+      <button class="btn ${isFav?'btn-danger':'btn-primary'}" onclick="toggleFav('${num}');closeModal('event-modal')">${isFav?'Remove favorite':'★ Favorite'}</button>
+      ${e.url?`<a class="btn" href="${e.url}" target="_blank">Register ↗</a>`:''}
+    </div>
+  `;
+  document.getElementById('event-modal').classList.add('open');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
+
+// ================================================================
+//  VIEWS
+// ================================================================
+function showView(v) {
+  S.view = v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  document.getElementById(`view-${v}`).classList.add('active');
+  renderCurrent();
+}
+function renderCurrent() {
+  if (S.view==='browse')    applyFilters();
+  if (S.view==='favorites') renderFavView();
+  if (S.view==='schedule')  renderSchedView();
+  if (S.view==='group')     renderGroupView();
+  if (S.view==='upload')    renderVerList(S.year);
+  if (S.view==='today')     renderTodayView();
+}
+
+// FAVORITES
+function renderFavView() {
+  const container = document.getElementById('fav-content');
+  if (!S.year) { container.innerHTML='<div class="empty"><h3>Select a year first</h3></div>'; return; }
+  const user = S.user||'jake';
+  const evs = S.events.filter(e => S.favs[user].has(String(e.num)));
+  if (!evs.length) { container.innerHTML=`<div class="empty"><h3>No favorites yet for ${user}</h3><p>Star events while browsing</p></div>`; return; }
+  const byDay = {};
+  DAYS.forEach(d=>byDay[d]=[]);
+  evs.forEach(e => (byDay[e.day]||[]).push(e));
+  let html = `<p style="font-size:13px;color:var(--text2);margin-bottom:12px">${evs.length} favorites for <strong>${user}</strong></p>`;
+  DAYS.forEach(day => {
+    if (!byDay[day]?.length) return;
+    byDay[day].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    html += `<div class="sched-day"><h3>${day} (${byDay[day].length})</h3>${byDay[day].map(e=>cardHTML(e)).join('')}</div>`;
+  });
+  container.innerHTML = html;
+}
+
+// SCHEDULE
+function renderSchedView() {
+  const container = document.getElementById('sched-content');
+  if (!S.year) { container.innerHTML='<div class="empty"><h3>Select a year first</h3></div>'; return; }
+  const user = S.user||'jake';
+  const evs = S.events.filter(e => S.favs[user].has(String(e.num)));
+  if (!evs.length) { container.innerHTML=`<div class="empty"><h3>No favorites yet</h3><p>Add favorites to build your schedule</p></div>`; return; }
+
+  // Conflict detection
+  const conflicts = [];
+  const sorted = [...evs].sort((a,b)=>(a.startUTC||'').localeCompare(b.startUTC||''));
+  for (let i=0; i<sorted.length-1; i++) {
+    const a=sorted[i], b=sorted[i+1];
+    if (a.day===b.day && a.startUTC && b.startUTC) {
+      const aEnd = new Date(a.startUTC).getTime() + a.duration*60000;
+      if (aEnd > new Date(b.startUTC).getTime()) conflicts.push([a.name, b.name]);
+    }
+  }
+  document.getElementById('conflict-note').textContent = conflicts.length ? `⚠ ${conflicts.length} time conflict${conflicts.length>1?'s':''}` : '';
+
+  const byDay={};
+  DAYS.forEach(d=>byDay[d]=[]);
+  evs.forEach(e=>(byDay[e.day]||[]).push(e));
+  let html='';
+  DAYS.forEach(day => {
+    if (!byDay[day]?.length) return;
+    byDay[day].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    html += `<div class="sched-day"><h3>${day}</h3>`;
+    byDay[day].forEach(e => {
+      const dur = e.duration ? Math.round(e.duration/60*10)/10+'h' : '';
+      const conf = conflicts.find(([a,b])=>a===e.name||b===e.name);
+      html += `<div class="sched-item" onclick="showDetail('${e.num}')">
+        <div class="sched-time">${e.time||'—'}</div>
+        <div class="sched-info">
+          <div class="sched-name">${e.name}${conf?'<span class="conflict-warn">⚠ conflict</span>':''}</div>
+          <div class="sched-sub">${[e.publisher,dur,e.room].filter(Boolean).join(' · ')}</div>
+        </div>
+        ${e.url?`<a class="sess" href="${e.url}" target="_blank" onclick="event.stopPropagation()" style="flex-shrink:0">Register ↗</a>`:''}
+      </div>`;
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+// GROUP
+function renderGroupView() {
+  const container = document.getElementById('group-content');
+  if (!S.year) { container.innerHTML='<div class="empty"><h3>Select a year first</h3></div>'; return; }
+
+  const everyoneWants = S.events.filter(e => USERS.every(u=>S.favs[u].has(String(e.num))));
+  const atLeastTwo = S.events.filter(e => favUsers(e.num).length>=2 && favUsers(e.num).length<3);
+
+  let html = '';
+  if (everyoneWants.length) {
+    html += `<div style="margin-bottom:1.5rem"><p class="section-title">everyone wants (${everyoneWants.length})</p>${everyoneWants.map(e=>cardHTML(e)).join('')}</div>`;
+  }
+  if (atLeastTwo.length) {
+    html += `<div style="margin-bottom:1.5rem"><p class="section-title">at least 2 people want (${atLeastTwo.length})</p>${atLeastTwo.map(e=>cardHTML(e)).join('')}</div>`;
+  }
+  html += `<div class="user-cols">`;
+  USERS.forEach(user => {
+    const evs = S.events.filter(e=>S.favs[user].has(String(e.num)));
+    html += `<div class="ucol-${user}"><div class="ucol-header">${user} · ${evs.length} ★</div>${evs.length ? evs.map(e=>`<div class="ucol-item" onclick="showDetail('${e.num}')">${e.name}</div>`).join('') : '<p style="font-size:12px;color:var(--text3)">None yet</p>'}</div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// TODAY
+function setupTodayPicker() {
+  const now = new Date();
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  document.getElementById('today-label').textContent = DAYS.includes(dayName) ? `${dayName} at Origins` : 'Convention Mode';
+  document.getElementById('today-sublabel').textContent = DAYS.includes(dayName)
+    ? now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+    : 'Origins 2026 · June 17–21 · Columbus, OH';
+  const picker = document.getElementById('today-day-btns');
+  picker.innerHTML = DAYS.map(d=>`<button class="pill ${d===dayName?'on':''}" onclick="renderToday('${d}',this)">${d.slice(0,3)}</button>`).join('');
+}
+function renderTodayView(){ setupTodayPicker(); const active = document.querySelector('#today-day-btns .pill.on'); renderToday(active?.textContent ? DAYS.find(d=>d.startsWith(active.textContent)) : 'Wednesday'); }
+function renderToday(day, btn) {
+  if (btn) { document.querySelectorAll('#today-day-btns .pill').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  const container = document.getElementById('today-content');
+  const user = S.user;
+  const dayEvs = S.events.filter(e=>e.day===day).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const mine   = user ? dayEvs.filter(e=>S.favs[user].has(String(e.num))) : [];
+  const others = dayEvs.filter(e=>favUsers(e.num).length>0 && !(user&&S.favs[user].has(String(e.num))));
+  let html = '';
+  if (mine.length) {
+    html += `<p class="section-title">my ${day.toLowerCase()} schedule</p>`;
+    mine.forEach(e => {
+      const dur = e.duration?Math.round(e.duration/60*10)/10+'h':'';
+      html += `<div class="today-sess" onclick="showDetail('${e.num}')">
+        <div class="today-time">${e.time||'—'}</div>
+        <div class="today-info"><div class="today-name">${e.name}</div><div class="today-sub">${[e.room,dur].filter(Boolean).join(' · ')}</div></div>
+        ${e.url?`<a class="btn" href="${e.url}" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;padding:3px 8px;flex-shrink:0">Register ↗</a>`:''}
+      </div>`;
+    });
+  }
+  if (others.length) {
+    html += `<hr><p class="section-title">also of group interest on ${day.toLowerCase()}</p>`;
+    others.forEach(e => {
+      const fu = favUsers(e.num);
+      html += `<div class="today-sess" onclick="showDetail('${e.num}')">
+        <div class="today-time">${e.time||'—'}</div>
+        <div class="today-info">
+          <div class="today-name">${e.name}</div>
+          <div class="today-sub">${fu.map(u=>`<span style="color:${UCOLORS[u]}">${u}</span>`).join(', ')} · ${e.room}</div>
+        </div>
+      </div>`;
+    });
+  }
+  if (!mine.length&&!others.length) html='<div class="empty"><h3>Nothing flagged for this day</h3><p>Add favorites to see your schedule here</p></div>';
+  container.innerHTML = html;
+}
+
+// VERSIONS
+async function renderVerList(year) {
+  if (!year) return;
+  const container = document.getElementById('ver-list');
+  try {
+    const snap = await db.collection('years').doc(String(year)).collection('versions').orderBy('uploadedAt','desc').limit(15).get();
+    if (snap.empty) { container.innerHTML='<div class="empty"><h3>No uploads yet</h3></div>'; return; }
+    container.innerHTML='';
+    snap.forEach(d => {
+      const v=d.data();
+      const dt = v.uploadedAt?.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})||'?';
+      const div=document.createElement('div'); div.className='ver-item';
+      div.innerHTML=`<div class="ver-info"><strong>${v.filename||'CSV'}</strong><div class="ver-meta">${v.eventCount} events · ${dt} · by ${v.uploadedBy||'?'}</div>${v.diff?.added?`<div class="ver-meta" style="color:var(--success)">+${v.diff.added} added</div>`:''}${v.diff?.removed?`<div class="ver-meta" style="color:var(--danger)">−${v.diff.removed} removed${v.diff.caredAbout?` (${v.diff.caredAbout} you cared about)`:''}</div>`:''}</div>`;
+      container.appendChild(div);
+    });
+  } catch(e){ container.innerHTML='<div class="empty"><h3>Could not load history</h3></div>'; }
+}
+
+function renderDiffOut(diff) {
+  const c = document.getElementById('diff-out');
+  if (!diff.added.length&&!diff.removed.length) { c.innerHTML='<div class="alert alert-success">No changes from previous version.</div>'; return; }
+  let html='';
+  if (Object.keys(diff.removedCaredAbout).length) {
+    html+=`<div class="alert alert-danger"><strong>⚠ Removed events someone favorited:</strong><ul class="diff-list">`;
+    for (const [num,users] of Object.entries(diff.removedCaredAbout)) {
+      const e=S.events.find(ev=>String(ev.num)===String(num));
+      html+=`<li>${e?.name||num} — ${users.join(', ')}</li>`;
+    }
+    html+='</ul></div>';
+  }
+  if (diff.added.length) html+=`<div class="alert alert-success"><strong>+${diff.added.length} new events</strong>${diff.added.length<=12?'<ul class="diff-list">'+diff.added.slice(0,12).map(e=>`<li>${e.name}</li>`).join('')+'</ul>':''}</div>`;
+  if (diff.removed.length) html+=`<div class="alert alert-warn"><strong>−${diff.removed.length} events removed</strong>${diff.removed.length<=12?'<ul class="diff-list">'+diff.removed.slice(0,12).map(e=>`<li>${e.name}</li>`).join('')+'</ul>':''}</div>`;
+  c.innerHTML=html;
+}
+
+// ================================================================
+//  EXPORT
+// ================================================================
+function exportForClaude() {
+  if (!S.year) { toast('Select a year first'); return; }
+  const user=S.user||'jake';
+  const evs=S.events.filter(e=>S.favs[user].has(String(e.num)));
+  if (!evs.length) { toast('No favorites to export'); return; }
+
+  const byDay={};
+  DAYS.forEach(d=>byDay[d]=[]);
+  evs.forEach(e=>(byDay[e.day]||[]).push(e));
+
+  let txt=`Origins ${S.year} — ${user}'s favorites (${evs.length} events)\n`;
+  txt+=`Generated ${new Date().toLocaleDateString()}\n`;
+  txt+=`Group: ${USERS.map(u=>`${u} (${S.favs[u].size} favs)`).join(', ')}\n\n`;
+  DAYS.forEach(day => {
+    if (!byDay[day]?.length) return;
+    txt+=`=== ${day} ===\n`;
+    byDay[day].sort((a,b)=>(a.time||'').localeCompare(b.time||'')).forEach(e => {
+      const dur=e.duration?Math.round(e.duration/60*10)/10+'h':'?h';
+      txt+=`[${e.time||'TBD'}] ${e.name} (${TSHORT[e.type]||e.type}, ${dur}, ${e.complexity||'?'} complexity)\n`;
+      txt+=`  Room: ${e.room||'?'} | Publisher: ${e.publisher||'?'}\n`;
+      if (e.url) txt+=`  Register: ${e.url}\n`;
+      const others=favUsers(e.num).filter(u=>u!==user);
+      if (others.length) txt+=`  Also wanted by: ${others.join(', ')}\n`;
+      txt+='\n';
+    });
+  });
+
+  download(txt, `origins-${S.year}-${user}-for-claude.txt`, 'text/plain');
+  toast('Exported!');
+}
+
+function exportFavCSV() {
+  if (!S.year) { toast('Select a year first'); return; }
+  const user=S.user||'jake';
+  const evs=S.events.filter(e=>S.favs[user].has(String(e.num)));
+  if (!evs.length) { toast('No favorites to export'); return; }
+  const hdr='Event Number,Event Name,Event Type,Game Publisher,Game Complexity,Duration (minutes),Starts,Room,URL';
+  const rows=evs.map(e=>[e.num,e.name,e.type,e.publisher,e.complexity,e.duration,e.starts,e.room,e.url||''].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+  download([hdr,...rows].join('\n'), `origins-${S.year}-${user}-favorites.csv`, 'text/csv');
+}
+
+function download(content, filename, mime) {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename; a.click();
+}
+
+// ================================================================
+//  FILTER TOGGLE HELPERS
+// ================================================================
+function toggleF(btn){ const f=btn.dataset.f; btn.classList.toggle('on'); S.filt.flags[btn.classList.contains('on')?'add':'delete'](f); applyFilters(); }
+function toggleFU(btn){ const u=btn.dataset.fu; btn.classList.toggle('on'); S.filt.favusers[btn.classList.contains('on')?'add':'delete'](u); applyFilters(); }
+function toggleDay(btn){ document.querySelectorAll('[data-day]').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); S.filt.day=btn.dataset.day; applyFilters(); }
+function toggleType(btn){ document.querySelectorAll('[data-type]').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); S.filt.type=btn.dataset.type; applyFilters(); }
+function toggleCX(btn){ document.querySelectorAll('[data-cx]').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); S.filt.cx=btn.dataset.cx; applyFilters(); }
+function toggleDur(btn){ document.querySelectorAll('[data-dur]').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); S.filt.dur=parseInt(btn.dataset.dur)||0; applyFilters(); }
+function toggleTaught(){ S.filt.taught=!S.filt.taught; document.getElementById('btn-taught').classList.toggle('on',S.filt.taught); applyFilters(); }
+function toggleNoTour(){ S.filt.notour=!S.filt.notour; document.getElementById('btn-notour').classList.toggle('on',S.filt.notour); applyFilters(); }
+function onSearch(v){ S.filt.q=v; applyFilters(); }
+function clearFilters(){
+  S.filt={flags:new Set(),favusers:new Set(),day:'All',type:'All',cx:'All',dur:0,taught:false,notour:true,q:''};
+  document.getElementById('search-inp').value='';
+  document.querySelectorAll('.pill.on').forEach(b=>b.classList.remove('on'));
+  ['[data-day="All"]','[data-type="All"]','[data-cx="All"]','[data-dur="0"]'].forEach(sel=>document.querySelector(sel)?.classList.add('on'));
+  document.getElementById('btn-notour').classList.add('on');
+  applyFilters();
+}
+
+// ================================================================
+//  USER SWITCHING
+// ================================================================
+function switchUser(u) {
+  S.user=u; localStorage.setItem('origins_user',u);
+  document.querySelectorAll('.user-btn').forEach(b=>b.classList.toggle('active',b.dataset.u===u));
+  if (S.year) loadUserPrefs(u,S.year);
+  renderCurrent();
+  if (S.view==='browse') applyFilters();
+}
+
+// ================================================================
+//  LOOKUP TABLES
+// ================================================================
+const TSHORT = {'Board Game':'Board','Roleplaying Game':'RPG','Card Game':'Card','Miniatures Game':'Minis','Escape Games':'Escape','Social Deduction/Deception':'Social','Workshop':'Workshop','Live Action Roleplaying Game':'LARP','Seminars and Panels':'Seminar','Eclectic':'Eclectic','Puzzle Games':'Puzzle','Entertainment':'Event','Classic Games':'Classic','Game-Based Education & Therapy Conference':'Edu'};
+const FLABEL = {norse:'Norse',greek:'Greek/Roman',myths:'Myths',zombies:'Zombies',cthulhu:'Cthulhu',apocalypse:'Apoc',archery:'Archery',deckbuilder:'Deck Builder',workerplacement:'Worker Placement',legacy:'Legacy',coop:'Co-Op',platonic:'Platonic Dice',premiere:'New!'};
+
+function cxBadge(c){ const m={Low:'lo',Medium:'me',High:'hi'}; return c&&m[c]?`<span class="b b-${m[c]}">${c}</span>`:''; }
+function toast(msg,ms=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),ms); }
+
+// ================================================================
+//  GO
+// ================================================================
+init();
+</script>
+</body>
+</html>
