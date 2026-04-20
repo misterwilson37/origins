@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner 1.2</title>
+<title>Origins Game Fair Planner 1.3</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -438,6 +438,23 @@ async function init() {
     await switchYear(savedYear, true);
   }
   setupTodayPicker();
+  testFirestoreConnection();
+}
+
+async function testFirestoreConnection() {
+  if (!FIREBASE_READY || !db) return;
+  try {
+    await db.collection('years').limit(1).get();
+  } catch(e) {
+    console.error('[Origins Planner] Firestore connection test failed:', e);
+    if (e.code === 'permission-denied') {
+      const banner = document.createElement('div');
+      banner.className = 'alert alert-danger';
+      banner.style.cssText = 'margin:8px 16px 0;font-size:12px';
+      banner.innerHTML = '<strong>Firestore rules not deployed</strong> &mdash; uploads and favorites will fail. Go to Firebase Console &rarr; Firestore &rarr; Rules and paste the contents of <code>firestore.rules</code>, then click Publish. See README step 1.3.';
+      document.querySelector('header').insertAdjacentElement('afterend', banner);
+    }
+  }
 }
 
 // ================================================================
@@ -545,7 +562,8 @@ async function loadEvents(year) {
     if (cached) {
       try { S.events = JSON.parse(cached); toast(`${S.events.length} events (cached — Firestore offline)`); return; } catch(ee){}
     }
-    document.getElementById('event-list').innerHTML = '<div class="empty"><h3>Failed to load events</h3><p>' + e.message + '</p></div>';
+    console.error('[Origins Planner] loadEvents failed:', e);
+    document.getElementById('event-list').innerHTML = '<div class="empty"><h3>Failed to load events</h3><p>' + (e.message||String(e)) + '</p><p style="font-size:12px;color:var(--text3);margin-top:4px">If this says permission-denied, deploy your Firestore rules (README step 1.3)</p></div>';
   }
 }
 
@@ -758,7 +776,15 @@ async function doUpload(text, filename) {
     applyFilters();
     renderVerList(year);
     toast(`✓ ${newEvs.length} events uploaded for ${year}`);
-  } catch(e) { toast('Upload failed: '+e.message); }
+  } catch(e) {
+    console.error('[Origins Planner] Upload failed:', e);
+    const msg = e.code === 'permission-denied'
+      ? 'Firestore permission denied. Deploy firestore.rules to your Firebase project first (see README step 1.3).'
+      : e.code === 'unavailable'
+      ? 'Firestore is unavailable. Check your internet connection and Firebase project ID in FIREBASE_CONFIG.'
+      : e.message || String(e);
+    toastError(msg);
+  }
 }
 
 async function doImportPrefs(text) {
@@ -1174,7 +1200,13 @@ const TSHORT = {'Board Game':'Board','Roleplaying Game':'RPG','Card Game':'Card'
 const FLABEL = {norse:'Norse',greek:'Greek/Roman',myths:'Myths',zombies:'Zombies',cthulhu:'Cthulhu',apocalypse:'Apoc',archery:'Archery',deckbuilder:'Deck Builder',workerplacement:'Worker Placement',legacy:'Legacy',coop:'Co-Op',platonic:'Platonic Dice',premiere:'New!'};
 
 function cxBadge(c){ const m={Low:'lo',Medium:'me',High:'hi'}; return c&&m[c]?`<span class="b b-${m[c]}">${c}</span>`:''; }
-function toast(msg,ms=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),ms); }
+function toast(msg,ms=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); if(ms>0) setTimeout(()=>t.classList.remove('show'),ms); }
+function toastError(msg){ console.error('[Origins Planner]', msg); showError(msg); toast('Error: '+msg.slice(0,60), 5000); }
+function showError(msg){
+  const c = document.getElementById('diff-out');
+  if(!c) return;
+  c.innerHTML = `<div class="alert alert-danger"><strong>Upload error</strong><br>${msg}<br><small style="opacity:.7">Check the browser console (F12) for details.</small></div>`;
+}
 
 // ================================================================
 //  GO
