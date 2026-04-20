@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner</title>
+<title>Origins Game Fair Planner 1.6</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -688,11 +688,13 @@ function parsePrefsCSV(text) {
 
   const result = {};
 
-  // First pass: look for columns named after each user (case-insensitive, partial match ok)
+  // First pass: look for columns containing the user name as a whole word
+  // e.g. 'Jake Interest', 'Dan Interest', 'Tim Interest'
   for (const user of USERS) {
-    const col = headers.find(h => h.trim().toLowerCase() === user.toLowerCase()
-      || h.trim().toLowerCase().startsWith(user.toLowerCase() + ' ')
-      || h.trim().toLowerCase().endsWith(' ' + user.toLowerCase()));
+    const col = headers.find(h => {
+      const words = h.trim().toLowerCase().split(/[\s_\-]+/);
+      return words.includes(user.toLowerCase());
+    });
     if (col) {
       const nums = res.data
         .filter(r => (r[col]||'').toString().toUpperCase() === 'TRUE')
