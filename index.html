@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner 1.3</title>
+<title>Origins Game Fair Planner 1.4</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -733,55 +733,84 @@ async function doUpload(text, filename) {
   if (!newEvs.length) { toast('No events found — check CSV format'); return; }
 
   const diff = computeDiff(S.events, newEvs);
-  renderDiffOut(diff);
 
-  toast(`Uploading ${newEvs.length} events…`);
+  if (!FIREBASE_READY || !db) {
+    S.events = newEvs; S.year = year;
+    try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); } catch(e){}
+    renderDiffOut(diff);
+    toast(`✓ ${newEvs.length} events loaded locally (Firebase not configured)`);
+    applyFilters();
+    return;
+  }
+
+  // Write chunks in small batches to stay under Firestore's 10MB limit.
+  // 50 events/chunk × ~5 chunks/commit = ~250 events per commit, well under the limit.
+  const CHUNK = 50;
+  const CHUNKS_PER_COMMIT = 5;
   const verId = Date.now().toString();
-  const CHUNK = 200;
-  const batch = db.batch();
+  const yearRef = db.collection('years').doc(String(year));
+  const totalChunks = Math.ceil(newEvs.length / CHUNK);
 
   try {
-    const oldChunks = await db.collection('years').doc(String(year)).collection('chunks').get();
-    oldChunks.forEach(d => batch.delete(d.ref));
-    for (let i=0; i<newEvs.length; i+=CHUNK) {
-      batch.set(
-        db.collection('years').doc(String(year)).collection('chunks').doc(String(Math.floor(i/CHUNK))),
-        { events: newEvs.slice(i, i+CHUNK) }
-      );
+    // Step 1: delete old chunks in small batches
+    toast('Clearing old data…');
+    const oldChunks = await yearRef.collection('chunks').get();
+    if (!oldChunks.empty) {
+      const deleteGroups = [];
+      let group = [];
+      oldChunks.forEach(d => { group.push(d.ref); if (group.length === 20) { deleteGroups.push(group); group = []; } });
+      if (group.length) deleteGroups.push(group);
+      for (const g of deleteGroups) {
+        const b = db.batch();
+        g.forEach(ref => b.delete(ref));
+        await b.commit();
+      }
     }
-    batch.set(db.collection('years').doc(String(year)), {
+
+    // Step 2: write new chunks in groups
+    let committed = 0;
+    for (let start = 0; start < totalChunks; start += CHUNKS_PER_COMMIT) {
+      const b = db.batch();
+      const end = Math.min(start + CHUNKS_PER_COMMIT, totalChunks);
+      for (let i = start; i < end; i++) {
+        b.set(yearRef.collection('chunks').doc(String(i)), {
+          events: newEvs.slice(i * CHUNK, (i + 1) * CHUNK)
+        });
+      }
+      await b.commit();
+      committed += (end - start);
+      toast(`Uploading… ${Math.round(committed/totalChunks*100)}%`);
+    }
+
+    // Step 3: write metadata
+    const metaBatch = db.batch();
+    metaBatch.set(yearRef, {
       year, label:`Origins ${year}`, latestVersion:verId,
       lastUpdated:firebase.firestore.Timestamp.now(), eventCount:newEvs.length
     }, {merge:true});
-    batch.set(db.collection('years').doc(String(year)).collection('versions').doc(verId), {
+    metaBatch.set(yearRef.collection('versions').doc(verId), {
       verId, filename, eventCount:newEvs.length,
       uploadedAt:firebase.firestore.Timestamp.now(),
       uploadedBy:S.user||'unknown',
       diff:{added:diff.added.length, removed:diff.removed.length, caredAbout:Object.keys(diff.removedCaredAbout).length}
     });
-    if (!FIREBASE_READY || !db) {
-      // No Firebase — store in localStorage only
-      S.events = newEvs; S.year = year;
-      try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); } catch(e){}
-      renderDiffOut(diff);
-      toast(`✓ ${newEvs.length} events loaded locally (Firebase not configured)`);
-      applyFilters();
-      return;
-    }
-    await batch.commit();
+    await metaBatch.commit();
+
     S.events = newEvs; S.year = year;
     try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); localStorage.setItem(`orig_ver_${year}`,verId); } catch(e){}
+    renderDiffOut(diff);
     await loadYearList();
     document.getElementById('year-sel').value = year;
     applyFilters();
     renderVerList(year);
     toast(`✓ ${newEvs.length} events uploaded for ${year}`);
+
   } catch(e) {
     console.error('[Origins Planner] Upload failed:', e);
     const msg = e.code === 'permission-denied'
-      ? 'Firestore permission denied. Deploy firestore.rules to your Firebase project first (see README step 1.3).'
+      ? 'Firestore permission denied. Go to Firebase Console → Firestore → Rules and paste firestore.rules, then click Publish.'
       : e.code === 'unavailable'
-      ? 'Firestore is unavailable. Check your internet connection and Firebase project ID in FIREBASE_CONFIG.'
+      ? 'Firestore unavailable. Check internet connection and Firebase project ID.'
       : e.message || String(e);
     toastError(msg);
   }
