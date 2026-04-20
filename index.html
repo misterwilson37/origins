@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner 1.6</title>
+<title>Origins Game Fair Planner 1.7</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -499,6 +499,8 @@ async function loadYearList() {
       s.appendChild(o);
     });
   });
+  // Keep upload year in sync with selected year
+  if (S.year) upSel.value = S.year;
 
   if (!FIREBASE_READY) {
     const banner = document.createElement('div');
@@ -762,6 +764,22 @@ async function doUpload(text, filename) {
   toast('Parsing…');
   const newEvs = parseOriginCSV(text);
   if (!newEvs.length) { toast('No events found — check CSV format'); return; }
+
+  // Auto-detect preference columns (e.g. "Jake Interest", "Dan Interest")
+  // so uploading the Google Sheet CSV also imports prefs automatically
+  const prefsFound = parsePrefsCSV(text);
+  if (Object.keys(prefsFound).length) {
+    for (const user of Object.keys(prefsFound)) {
+      const nums = prefsFound[user];
+      const upd = {}; upd[String(year)] = nums.map(String);
+      try {
+        if (FIREBASE_READY && db) await db.collection('userPrefs').doc(user).set(upd, {merge:true});
+        S.prefs[`${user}_${year}`] = new Set(nums.map(String));
+      } catch(e) { console.warn('Could not save prefs for', user, e); }
+    }
+    const summary = Object.keys(prefsFound).map(u => `${u} (${prefsFound[u].length})`).join(', ');
+    console.log('[Origins Planner] Auto-imported prefs:', summary);
+  }
 
   const diff = computeDiff(S.events, newEvs);
 
