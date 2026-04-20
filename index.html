@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner 1.1</title>
+<title>Origins Game Fair Planner 1.2</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -358,23 +358,17 @@ hr{border:none;border-top:.5px solid var(--border);margin:1rem 0}
 //  FIREBASE CONFIG — replace these values with your project's
 // ================================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
-  authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-  appId:             "REPLACE_WITH_YOUR_APP_ID"
+  apiKey:            "AIzaSyAm5dgbsYsYd3bDKH1FX3wYiF9RF5Jda7A",
+  authDomain:        "origins-planner.firebaseapp.com",
+  projectId:         "origins-planner",
+  storageBucket:     "origins-planner.firebasestorage.app",
+  messagingSenderId: "658570789984",
+  appId:             "1:658570789984:web:6c9b3b59d1a2722b72af05"
 };
 
-// Detect unconfigured state so the app still loads
-const FIREBASE_READY = !FIREBASE_CONFIG.apiKey.startsWith('REPLACE');
-let db = null;
-if (FIREBASE_READY) {
-  firebase.initializeApp(FIREBASE_CONFIG);
-  db = firebase.firestore();
-} else {
-  console.warn('Firebase not configured — running in local-only mode. Upload tab will work but data will not persist across browsers. See README to configure Firebase.');
-}
+const FIREBASE_READY = true;
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
 
 // ================================================================
 //  CONSTANTS
@@ -454,7 +448,7 @@ const DEFAULT_YEARS = [2029, 2028, 2027, 2026];
 async function loadYearList() {
   const sel = document.getElementById('year-sel');
   const upSel = document.getElementById('up-year');
-  sel.innerHTML = '<option value="">— select year —</option>';
+  sel.innerHTML = '<option value="">&mdash; select year &mdash;</option>';
   upSel.innerHTML = '';
 
   // Always start with defaults so the UI is never blocked
@@ -493,7 +487,7 @@ async function loadYearList() {
     const banner = document.createElement('div');
     banner.className = 'alert alert-warn';
     banner.style.cssText = 'margin:8px 16px 0;font-size:12px';
-    banner.innerHTML = '<strong>Firebase not configured</strong> — the app works locally but favorites won't sync between browsers. See README.md to connect Firebase.';
+    banner.innerHTML = "<strong>Firebase not configured</strong> &mdash; app works locally but favorites won't sync. See README.md to connect Firebase.";
     document.querySelector('header').insertAdjacentElement('afterend', banner);
   }
 }
