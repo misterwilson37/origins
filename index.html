@@ -357,17 +357,24 @@ hr{border:none;border-top:.5px solid var(--border);margin:1rem 0}
 // ================================================================
 //  FIREBASE CONFIG — replace these values with your project's
 // ================================================================
-const firebaseConfig = {
-    apiKey: "AIzaSyAm5dgbsYsYd3bDKH1FX3wYiF9RF5Jda7A",
-    authDomain: "origins-planner.firebaseapp.com",
-    projectId: "origins-planner",
-    storageBucket: "origins-planner.firebasestorage.app",
-    messagingSenderId: "658570789984",
-    appId: "1:658570789984:web:6c9b3b59d1a2722b72af05"
-  };
+const FIREBASE_CONFIG = {
+  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+  authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId:             "REPLACE_WITH_YOUR_APP_ID"
+};
 
-firebase.initializeApp(FIREBASE_CONFIG);
-const db = firebase.firestore();
+// Detect unconfigured state so the app still loads
+const FIREBASE_READY = !FIREBASE_CONFIG.apiKey.startsWith('REPLACE');
+let db = null;
+if (FIREBASE_READY) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} else {
+  console.warn('Firebase not configured — running in local-only mode. Upload tab will work but data will not persist across browsers. See README to configure Firebase.');
+}
 
 // ================================================================
 //  CONSTANTS
@@ -442,31 +449,53 @@ async function init() {
 // ================================================================
 //  YEAR MANAGEMENT
 // ================================================================
+const DEFAULT_YEARS = [2029, 2028, 2027, 2026];
+
 async function loadYearList() {
   const sel = document.getElementById('year-sel');
+  const upSel = document.getElementById('up-year');
   sel.innerHTML = '<option value="">— select year —</option>';
-  try {
-    const snap = await db.collection('years').orderBy('year','desc').get();
-    const years = [];
-    snap.forEach(d => years.push(d.data()));
-    if (!years.find(y => y.year === 2026)) years.push({year:2026, label:'Origins 2026'});
-    years.sort((a,b) => b.year - a.year);
-    years.forEach(y => {
+  upSel.innerHTML = '';
+
+  // Always start with defaults so the UI is never blocked
+  let years = DEFAULT_YEARS.map(yr => ({ year: yr, label: `Origins ${yr}` }));
+
+  // Try to merge in any years that exist in Firestore (may have event counts, custom labels)
+  if (FIREBASE_READY && db) {
+    try {
+      const snap = await db.collection('years').orderBy('year','desc').get();
+      if (!snap.empty) {
+        const remote = [];
+        snap.forEach(d => remote.push(d.data()));
+        for (const r of remote) {
+          const idx = years.findIndex(y => y.year === r.year);
+          if (idx >= 0) years[idx] = { ...years[idx], ...r };
+          else years.push(r);
+        }
+        years.sort((a, b) => b.year - a.year);
+      }
+    } catch(e) {
+      // Firestore unreachable — defaults already set, silently continue
+    }
+  }
+
+  years.forEach(y => {
+    const evCount = y.eventCount ? ` (${y.eventCount})` : '';
+    [sel, upSel].forEach(s => {
       const o = document.createElement('option');
       o.value = y.year;
-      o.textContent = y.label || `Origins ${y.year}`;
-      sel.appendChild(o);
+      o.textContent = (y.label || `Origins ${y.year}`) + evCount;
+      s.appendChild(o);
     });
-    // Sync upload year options
-    const upSel = document.getElementById('up-year');
-    upSel.innerHTML = '';
-    const allYears = new Set([...years.map(y=>y.year), 2026, 2027, 2028, 2029]);
-    [...allYears].sort((a,b)=>b-a).forEach(yr => {
-      const o = document.createElement('option');
-      o.value = yr; o.textContent = `Origins ${yr}`;
-      upSel.appendChild(o);
-    });
-  } catch(e){ toast('Could not load year list'); }
+  });
+
+  if (!FIREBASE_READY) {
+    const banner = document.createElement('div');
+    banner.className = 'alert alert-warn';
+    banner.style.cssText = 'margin:8px 16px 0;font-size:12px';
+    banner.innerHTML = '<strong>Firebase not configured</strong> — the app works locally but favorites won't sync between browsers. See README.md to connect Firebase.';
+    document.querySelector('header').insertAdjacentElement('afterend', banner);
+  }
 }
 
 async function switchYear(year, initial=false) {
@@ -485,13 +514,24 @@ async function switchYear(year, initial=false) {
 async function loadEvents(year) {
   const cacheKey = `orig_ev_${year}`;
   const verKey   = `orig_ver_${year}`;
+
+  // Try local cache first (works even without Firebase)
+  const cached = localStorage.getItem(cacheKey);
+
+  if (!FIREBASE_READY || !db) {
+    if (cached) {
+      try { S.events = JSON.parse(cached); toast(`${S.events.length} events (local cache)`); return; } catch(e){}
+    }
+    document.getElementById('event-list').innerHTML = '<div class="empty"><h3>No events yet</h3><p>Upload a CSV in the Upload tab to get started</p></div>';
+    return;
+  }
+
   let latest = null;
   try {
     const meta = await db.collection('years').doc(String(year)).get();
     if (meta.exists) latest = meta.data().latestVersion || null;
   } catch(e){}
 
-  const cached = localStorage.getItem(cacheKey);
   const cachedVer = localStorage.getItem(verKey);
   if (latest && cachedVer === latest && cached) {
     try { S.events = JSON.parse(cached); toast(`${S.events.length} events loaded`); return; } catch(e){}
@@ -502,12 +542,15 @@ async function loadEvents(year) {
     S.events = [];
     snap.forEach(d => { const dat = d.data(); if (dat.events) S.events.push(...dat.events); });
     if (!S.events.length) {
-      document.getElementById('event-list').innerHTML = '<div class="empty"><h3>No events yet</h3><p>Upload a CSV in the Upload tab</p></div>';
+      document.getElementById('event-list').innerHTML = '<div class="empty"><h3>No events yet</h3><p>Upload a CSV in the Upload tab to get started</p></div>';
       return;
     }
     try { localStorage.setItem(cacheKey, JSON.stringify(S.events)); if (latest) localStorage.setItem(verKey, latest); } catch(e){}
     toast(`${S.events.length} events loaded`);
   } catch(e) {
+    if (cached) {
+      try { S.events = JSON.parse(cached); toast(`${S.events.length} events (cached — Firestore offline)`); return; } catch(ee){}
+    }
     document.getElementById('event-list').innerHTML = '<div class="empty"><h3>Failed to load events</h3><p>' + e.message + '</p></div>';
   }
 }
@@ -519,30 +562,46 @@ async function loadAllFavs(year) {
   await Promise.all(USERS.map(u => loadUserFavs(u, year)));
 }
 async function loadUserFavs(user, year) {
+  if (!FIREBASE_READY || !db) {
+    // Try localStorage fallback
+    const key = `orig_favs_${user}_${year}`;
+    const raw = localStorage.getItem(key);
+    S.favs[user] = raw ? new Set(JSON.parse(raw)) : new Set();
+    return;
+  }
   try {
     const d = await db.collection('userFavorites').doc(user).get();
     S.favs[user] = d.exists ? new Set(Object.keys(d.data()[String(year)] || {})) : new Set();
   } catch(e){ S.favs[user] = new Set(); }
 }
 async function toggleFav(num) {
-  if (!S.user) { toast('Pick a user first'); return; }
+  if (!S.user) { toast('Pick a user first (Jake / Dan / Tim)'); return; }
   const ns = String(num);
   const was = S.favs[S.user].has(ns);
   was ? S.favs[S.user].delete(ns) : S.favs[S.user].add(ns);
-  const upd = {};
-  upd[`${S.year}.${ns}`] = was ? firebase.firestore.FieldValue.delete() : firebase.firestore.Timestamp.now();
-  try {
-    await db.collection('userFavorites').doc(S.user).set(upd, {merge:true});
-    // Refresh card in DOM
-    const card = document.querySelector(`[data-num="${ns}"]`);
-    if (card) refreshCardFav(card, ns);
-    if (S.view==='favorites') renderFavView();
-    if (S.view==='group') renderGroupView();
-    if (S.view==='schedule') renderSchedView();
-  } catch(e) {
-    was ? S.favs[S.user].add(ns) : S.favs[S.user].delete(ns);
-    toast('Save failed — check connection');
+
+  // Persist to Firebase if available, otherwise fall back to localStorage
+  if (FIREBASE_READY && db) {
+    const upd = {};
+    upd[`${S.year}.${ns}`] = was ? firebase.firestore.FieldValue.delete() : firebase.firestore.Timestamp.now();
+    try {
+      await db.collection('userFavorites').doc(S.user).set(upd, {merge:true});
+    } catch(e) {
+      was ? S.favs[S.user].add(ns) : S.favs[S.user].delete(ns);
+      toast('Save failed — check connection');
+      return;
+    }
+  } else {
+    // Local-only: persist all favs to localStorage
+    const key = `orig_favs_${S.user}_${S.year}`;
+    localStorage.setItem(key, JSON.stringify([...S.favs[S.user]]));
   }
+
+  const card = document.querySelector(`[data-num="${ns}"]`);
+  if (card) refreshCardFav(card, ns);
+  if (S.view==='favorites') renderFavView();
+  if (S.view==='group') renderGroupView();
+  if (S.view==='schedule') renderSchedView();
 }
 function favUsers(num) { return USERS.filter(u => S.favs[u].has(String(num))); }
 
@@ -553,6 +612,7 @@ async function loadAllPrefs(year) {
   await Promise.all(USERS.map(u => loadUserPrefs(u, year)));
 }
 async function loadUserPrefs(user, year) {
+  if (!FIREBASE_READY || !db) return;
   try {
     const d = await db.collection('userPrefs').doc(user).get();
     if (d.exists) {
@@ -687,6 +747,15 @@ async function doUpload(text, filename) {
       uploadedBy:S.user||'unknown',
       diff:{added:diff.added.length, removed:diff.removed.length, caredAbout:Object.keys(diff.removedCaredAbout).length}
     });
+    if (!FIREBASE_READY || !db) {
+      // No Firebase — store in localStorage only
+      S.events = newEvs; S.year = year;
+      try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); } catch(e){}
+      renderDiffOut(diff);
+      toast(`✓ ${newEvs.length} events loaded locally (Firebase not configured)`);
+      applyFilters();
+      return;
+    }
     await batch.commit();
     S.events = newEvs; S.year = year;
     try { localStorage.setItem(`orig_ev_${year}`,JSON.stringify(newEvs)); localStorage.setItem(`orig_ver_${year}`,verId); } catch(e){}
@@ -705,7 +774,7 @@ async function doImportPrefs(text) {
   if (!nums.length) { toast('No preferred events found — check CSV'); return; }
   const upd = {}; upd[String(S.year)] = nums.map(String);
   try {
-    await db.collection('userPrefs').doc(S.user).set(upd, {merge:true});
+    if (FIREBASE_READY && db) await db.collection('userPrefs').doc(S.user).set(upd, {merge:true});
     S.prefs[`${S.user}_${S.year}`] = new Set(nums.map(String));
     toast(`✓ Imported ${nums.length} preferences for ${S.user}`);
     applyFilters();
