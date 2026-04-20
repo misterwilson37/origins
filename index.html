@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Origins Game Fair Planner 1.4</title>
+<title>Origins Game Fair Planner</title>
 <style>
 :root {
   --bg:#f8f7f4;--bg2:#eeecea;--bg3:#ffffff;--text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
@@ -679,21 +679,50 @@ function parseOriginCSV(text) {
 }
 
 function parsePrefsCSV(text) {
+  // Returns { jake: ['123','456',...], dan: [...], tim: [...] }
+  // Also supports a single-column import for the current user as fallback.
   const res = Papa.parse(text, {header:true, skipEmptyLines:true});
-  if (!res.data.length) return [];
+  if (!res.data.length) return {};
   const headers = Object.keys(res.data[0]);
-  let col = headers.find(h => /^true$|prefer|^flag$|^yes$/i.test(h.trim()));
-  if (!col) {
-    let best=null, bestN=0;
-    for (const h of headers) {
-      const n = res.data.filter(r => (r[h]||'').toString().toUpperCase()==='TRUE').length;
-      if (n > bestN) { bestN=n; best=h; }
-    }
-    if (bestN>0) col = best;
-  }
-  if (!col) return [];
   const numCol = headers.find(h => /number|event.num|^id$|^num$/i.test(h)) || headers[0];
-  return res.data.filter(r => (r[col]||'').toString().toUpperCase()==='TRUE').map(r => r[numCol]).filter(Boolean);
+
+  const result = {};
+
+  // First pass: look for columns named after each user (case-insensitive, partial match ok)
+  for (const user of USERS) {
+    const col = headers.find(h => h.trim().toLowerCase() === user.toLowerCase()
+      || h.trim().toLowerCase().startsWith(user.toLowerCase() + ' ')
+      || h.trim().toLowerCase().endsWith(' ' + user.toLowerCase()));
+    if (col) {
+      const nums = res.data
+        .filter(r => (r[col]||'').toString().toUpperCase() === 'TRUE')
+        .map(r => r[numCol]).filter(Boolean);
+      if (nums.length) result[user] = nums;
+    }
+  }
+
+  // Second pass: if no named columns found, fall back to a single "preferred" column
+  // and assign it to whoever is currently selected
+  if (!Object.keys(result).length && S.user) {
+    let col = headers.find(h => /^true$|prefer|^flag$|^yes$/i.test(h.trim()));
+    if (!col) {
+      // Pick the column with the most TRUE values
+      let best=null, bestN=0;
+      for (const h of headers) {
+        const n = res.data.filter(r => (r[h]||'').toString().toUpperCase()==='TRUE').length;
+        if (n > bestN) { bestN=n; best=h; }
+      }
+      if (bestN>0) col = best;
+    }
+    if (col) {
+      const nums = res.data
+        .filter(r => (r[col]||'').toString().toUpperCase() === 'TRUE')
+        .map(r => r[numCol]).filter(Boolean);
+      if (nums.length) result[S.user] = nums;
+    }
+  }
+
+  return result;
 }
 
 // ================================================================
@@ -817,15 +846,22 @@ async function doUpload(text, filename) {
 }
 
 async function doImportPrefs(text) {
-  if (!S.user) { toast('Select a user first'); return; }
   if (!S.year) { toast('Select a year first'); return; }
-  const nums = parsePrefsCSV(text);
-  if (!nums.length) { toast('No preferred events found — check CSV'); return; }
-  const upd = {}; upd[String(S.year)] = nums.map(String);
+  const byUser = parsePrefsCSV(text);
+  const found = Object.keys(byUser);
+  if (!found.length) {
+    toast('No preferences found. Make sure your sheet has columns named Jake, Dan, or Tim with TRUE values.');
+    return;
+  }
   try {
-    if (FIREBASE_READY && db) await db.collection('userPrefs').doc(S.user).set(upd, {merge:true});
-    S.prefs[`${S.user}_${S.year}`] = new Set(nums.map(String));
-    toast(`✓ Imported ${nums.length} preferences for ${S.user}`);
+    for (const user of found) {
+      const nums = byUser[user];
+      const upd = {}; upd[String(S.year)] = nums.map(String);
+      if (FIREBASE_READY && db) await db.collection('userPrefs').doc(user).set(upd, {merge:true});
+      S.prefs[`${user}_${S.year}`] = new Set(nums.map(String));
+    }
+    const summary = found.map(u => `${u} (${byUser[u].length})`).join(', ');
+    toast(`✓ Imported preferences: ${summary}`);
     applyFilters();
   } catch(e) { toast('Import failed: '+e.message); }
 }
